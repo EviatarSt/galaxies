@@ -1,6 +1,8 @@
 import tkinter as tk
-
+from tkinter import filedialog, messagebox
+import cv2
 from PythonApplication1 import solve
+from cvModule import detect_and_crop_grid, detect_galaxy_centers
 from i_o import print_solution
 
 class GalaxyCenter:
@@ -36,6 +38,36 @@ class GalaxyCenter:
             # "semi-transparent" look (gray instead of white)
             self.canvas.itemconfig(self.circle, fill="#cccccc")
 
+
+def ai_click(width_str=1, height_str=1):
+
+    cols = int(width_str)
+    rows = int(height_str)
+    
+    # Open file dialog
+    file_path = filedialog.askopenfilename(
+        title="Select Grid Image",
+        filetypes=[("PNG Images", "*.png"), ("All Files", "*.*")]
+    )
+
+    # User canceled
+    if not file_path:
+        print("No file selected.")
+        return
+
+    # Run your CV algorithm
+    cropped, error = detect_and_crop_grid(file_path, rows, cols)
+
+    if error:
+        messagebox.showerror("Error", error)
+        return
+
+    print("Grid detected and cropped successfully.")
+    theCenters = detect_galaxy_centers(cropped, rows, cols)
+    solution, *_ = solve(cols, rows, theCenters)
+    print_solution(cols, rows, solution)
+    return
+
 def on_click( width_str=1, height_str=1):
     cols = int(width_str)
     rows = int(height_str)
@@ -53,17 +85,17 @@ def on_click( width_str=1, height_str=1):
     canvas_width = cols * cell_size
     canvas_height = rows * cell_size
 
-    canvas = tk.Canvas(win, width=canvas_width, height=canvas_height)
+    canvas = tk.Canvas(win, width=canvas_width+2, height=canvas_height+2)
     canvas.pack()
 
     # Draw grid
     for i in range(rows + 2):
-        y = i * cell_size + 0.5
-        canvas.create_line(0.5, y, canvas_width + 0.5, y)
+        y = i * cell_size + 1.5
+        canvas.create_line(1.5, y, canvas_width+1.5, y)
 
     for j in range(cols + 2):
-        x = j * cell_size + 0.5
-        canvas.create_line(x, 0.5, x, canvas_height + 0.5)
+        x = j * cell_size + 1.5
+        canvas.create_line(x, 1.5, x, canvas_height + 1.5)
 
     # Create GalaxyCenters grid
     gc_rows = 2 * rows - 1
@@ -138,10 +170,17 @@ if __name__ == '__main__':
     heightEntry = tk.Entry(frame2)
     heightEntry.pack(side="left")
 
-    # Button
-    button = tk.Button(root, text="Submit",
+    frame3 = tk.Frame(root)
+    frame3.pack(pady=5)
+    # Buttons
+    button1 = tk.Button(frame3, text="Submit",
                        command=lambda: on_click(widthEntry.get(), heightEntry.get()))
-    button.pack(pady=15)
+    button1.pack(side="left", padx=5)
+
+    button2 = tk.Button(frame3, text="use AI",
+                       command=lambda: ai_click(widthEntry.get(), heightEntry.get()))
+    button2.pack(side="left")
+
 
     # Run the app
     root.mainloop()
